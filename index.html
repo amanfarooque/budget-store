@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BudgetWise</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #f5f2ec;
+    --surface: #ffffff;
+    --ink: #1a1a2e;
+    --muted: #7a7a8c;
+    --green: #2d7a4f;
+    --green-light: #e8f5ee;
+    --red: #c0392b;
+    --red-light: #fdecea;
+    --gold: #c9a84c;
+    --gold-light: #fdf6e3;
+    --border: #e2ddd6;
+    --radius: 14px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--ink);
+    color: white;
+    padding: 1.2rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    letter-spacing: -0.5px;
+  }
+
+  header span {
+    font-size: 0.8rem;
+    background: var(--gold);
+    color: var(--ink);
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .main {
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  /* Summary Cards */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 1.4rem 1.6rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+
+  .card .label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+  }
+
+  .card .amount {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+  }
+
+  .card.income .amount { color: var(--green); }
+  .card.expense .amount { color: var(--red); }
+  .card.balance .amount { color: var(--ink); }
+
+  /* Two-column layout */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  /* Forms */
+  .card h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: var(--ink);
+  }
+
+  .form-group { margin-bottom: 0.75rem; }
+
+  .form-group label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.3rem;
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 0.55rem 0.8rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    background: var(--bg);
+    color: var(--ink);
+    transition: border 0.2s;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: var(--ink);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  btn, .btn {
+    display: inline-block;
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn:active { transform: scale(0.98); }
+
+  .btn-primary { background: var(--ink); color: white; width: 100%; margin-top: 0.4rem; padding: 0.7rem; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-danger { background: none; border: none; color: var(--red); cursor: pointer; font-size: 0.8rem; padding: 2px 6px; }
+  .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+  .btn-gold { background: var(--gold); color: var(--ink); }
+
+  /* Transactions list */
+  .tx-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto; }
+
+  .tx-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    gap: 0.5rem;
+  }
+
+  .tx-left { display: flex; align-items: center; gap: 0.8rem; }
+  .tx-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .tx-dot.income { background: var(--green); }
+  .tx-dot.expense { background: var(--red); }
+
+  .tx-desc { font-size: 0.88rem; font-weight: 500; }
+  .tx-meta { font-size: 0.75rem; color: var(--muted); }
+
+  .tx-right { display: flex; align-items: center; gap: 0.8rem; }
+  .tx-amount { font-weight: 600; font-size: 0.95rem; }
+  .tx-amount.income { color: var(--green); }
+  .tx-amount.expense { color: var(--red); }
+
+  /* Goals */
+  .goal-item {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    margin-bottom: 0.75rem;
+  }
+
+  .goal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+  .goal-name { font-weight: 600; font-size: 0.95rem; }
+  .goal-deadline { font-size: 0.75rem; color: var(--muted); }
+  .goal-amounts { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.5rem; }
+
+  .progress-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), #52c77f);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+
+  .goal-update { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
+  .goal-update input { flex: 1; padding: 0.4rem 0.6rem; border: 1.5px solid var(--border); border-radius: 7px; font-size: 0.85rem; background: var(--surface); }
+
+  /* Charts */
+  .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
+  canvas { max-height: 220px; }
+
+  .empty { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 2rem 0; }
+
+  /* Tabs for transaction type */
+  .type-tabs { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
+  .type-tab {
+    flex: 1; text-align: center; padding: 0.45rem;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    cursor: pointer; font-size: 0.85rem; font-weight: 600;
+    background: var(--bg); color: var(--muted);
+    transition: all 0.15s;
+  }
+  .type-tab.active-income { border-color: var(--green); background: var(--green-light); color: var(--green); }
+  .type-tab.active-expense { border-color: var(--red); background: var(--red-light); color: var(--red); }
+
+  @media (max-width: 768px) {
+    .summary { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+    .charts { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💰 BudgetWise</h1>
+  <span>Personal Finance</span>
+</header>
+
+<div class="main">
+
+  <!-- Summary -->
+  <div class="summary">
+    <div class="card income">
+      <div class="label">Total Income</div>
+      <div class="amount">₹{{ "%.0f"|format(total_income) }}</div>
+    </div>
+    <div class="card expense">
+      <div class="label">Total Expenses</div>
+      <div class="amount">₹{{ "%.0f"|format(total_expenses) }}</div>
+    </div>
+    <div class="card balance">
+      <div class="label">Net Balance</div>
+      <div class="amount" style="color: {{ 'var(--green)' if balance >= 0 else 'var(--red)' }}">
+        ₹{{ "%.0f"|format(balance) }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts">
+    <div class="card">
+      <h2>Monthly Overview</h2>
+      <canvas id="barChart"></canvas>
+      {% if not transactions %}<div class="empty">Add transactions to see the chart</div>{% endif %}
+    </div>
+    <div class="card">
+      <h2>Expense Breakdown</h2>
+      <canvas id="pieChart"></canvas>
+      {% if not categories %}<div class="empty">No expenses yet</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- Add Transaction + Transactions List -->
+  <div class="two-col">
+    <div class="card">
+      <h2>Add Transaction</h2>
+      <form method="POST" action="/add_transaction">
+
+        <div class="type-tabs">
+          <div class="type-tab" id="tab-income" onclick="setType('income')">＋ Income</div>
+          <div class="type-tab" id="tab-expense" onclick="setType('expense')">－ Expense</div>
+        </div>
+        <input type="hidden" name="type" id="tx-type" value="income" />
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Amount (₹)</label>
+            <input type="number" name="amount" placeholder="0" min="0" step="0.01" required />
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" name="date" value="{{ today }}" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category" id="category-select">
+            <option value="Salary">Salary</option>
+            <option value="Freelance">Freelance</option>
+            <option value="Investment">Investment</option>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Bills">Bills</option>
+            <option value="Health">Health</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" name="description" placeholder="e.g. Monthly rent" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Add Transaction</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Recent Transactions</h2>
+      {% if transactions %}
+      <div class="tx-list">
+        {% for t in transactions[:20] %}
+        <div class="tx-item">
+          <div class="tx-left">
+            <div class="tx-dot {{ t.type }}"></div>
+            <div>
+              <div class="tx-desc">{{ t.description or t.category }}</div>
+              <div class="tx-meta">{{ t.category }} · {{ t.date }}</div>
+            </div>
+          </div>
+          <div class="tx-right">
+            <div class="tx-amount {{ t.type }}">
+              {{ '+' if t.type == 'income' else '−' }}₹{{ "%.0f"|format(t.amount) }}
+            </div>
+            <form method="POST" action="/delete_transaction/{{ t.id }}" style="display:inline">
+              <button type="submit" class="btn-danger" title="Delete">✕</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">No transactions yet. Add one!</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Savings Goals -->
+  <div class="two-col">
+    <div class="card">
+      <h2>Add Savings Goal</h2>
+      <form method="POST" action="/add_goal">
+        <div class="form-group">
+          <label>Goal Name</label>
+          <input type="text" name="name" placeholder="e.g. Emergency Fund" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Target Amount (₹)</label>
+            <input type="number" name="target" placeholder="50000" min="1" required />
+          </div>
+          <div class="form-group">
+            <label>Amount Saved (₹)</label>
+            <input type="number" name="saved" placeholder="0" min="0" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Deadline</label>
+          <input type="date" name="deadline" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-gold">Add Goal</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>My Goals</h2>
+      {% if goals %}
+        {% for g in goals %}
+        {% set pct = [((g.saved / g.target) * 100), 100]|min %}
+        <div class="goal-item">
+          <div class="goal-header">
+            <span class="goal-name">{{ g.name }}</span>
+            <span style="display:flex; gap:0.5rem; align-items:center;">
+              <span class="goal-deadline">📅 {{ g.deadline }}</span>
+              <form method="POST" action="/delete_goal/{{ g.id }}" style="display:inline">
+                <button class="btn-danger" type="submit">✕</button>
+              </form>
+            </span>
+          </div>
+          <div class="goal-amounts">₹{{ "%.0f"|format(g.saved) }} saved of ₹{{ "%.0f"|format(g.target) }} · {{ "%.0f"|format(pct) }}%</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ pct }}%"></div>
+          </div>
+          <form method="POST" action="/update_goal/{{ g.id }}" class="goal-update">
+            <input type="number" name="saved" placeholder="Update saved amount" min="0" step="0.01" />
+            <button type="submit" class="btn btn-sm btn-primary">Update</button>
+          </form>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="empty">No goals yet. Set one!</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Tab switching
+function setType(type) {
+  document.getElementById('tx-type').value = type;
+  const incomeTab = document.getElementById('tab-income');
+  const expenseTab = document.getElementById('tab-expense');
+  incomeTab.className = 'type-tab' + (type === 'income' ? ' active-income' : '');
+  expenseTab.className = 'type-tab' + (type === 'expense' ? ' active-expense' : '');
+}
+setType('income');
+
+// Charts
+fetch('/api/chart_data').then(r => r.json()).then(data => {
+  // Bar chart
+  if (data.months.length > 0) {
+    new Chart(document.getElementById('barChart'), {
+      type: 'bar',
+      data: {
+        labels: data.months,
+        datasets: [
+          { label: 'Income', data: data.income, backgroundColor: '#2d7a4f88', borderColor: '#2d7a4f', borderWidth: 2, borderRadius: 6 },
+          { label: 'Expenses', data: data.expenses, backgroundColor: '#c0392b88', borderColor: '#c0392b', borderWidth: 2, borderRadius: 6 }
+        ]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  // Pie chart
+  if (data.cat_labels.length > 0) {
+    const colors = ['#2d7a4f','#c0392b','#c9a84c','#3498db','#9b59b6','#e67e22','#1abc9c','#e74c3c'];
+    new Chart(document.getElementById('pieChart'), {
+      type: 'doughnut',
+      data: {
+        labels: data.cat_labels,
+        datasets: [{ data: data.cat_values, backgroundColor: colors, borderWidth: 0, hoverOffset: 6 }]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+    });
+  }
+});
+</script>
+</body>
+</html>
